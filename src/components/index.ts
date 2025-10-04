@@ -4,3 +4,6 @@ export { default as Navigation } from './Navigation';
 export { default as AuthForm } from './AuthForm';
 export { default as BankAccountSelector } from './BankAccountSelector';
 export { default as TransactionsList } from './TransactionsList';
+export { default as SpendingInsights } from './SpendingInsights';
+export { default as BankConnectionSuccess } from './BankConnectionSuccess';
+export { default as ProfilePage } from './ProfilePage';

@@ -53,13 +53,27 @@ import {
 } from '@mui/icons-material';
 
 const Dashboard: React.FC = () => {
-  // State management
+  // State management with localStorage persistence
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [voiceSearch, setVoiceSearch] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [isListening, setIsListening] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(() => 
+    localStorage.getItem('dashboard-category') || 'all'
+  );
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   const [subscriptionMenuAnchor, setSubscriptionMenuAnchor] = useState<null | HTMLElement>(null);
+  const [dateFilter, setDateFilter] = useState(() => 
+    localStorage.getItem('dashboard-date-filter') || 'all'
+  );
+  const [amountRange, setAmountRange] = useState<{ min: string; max: string }>(() => 
+    JSON.parse(localStorage.getItem('dashboard-amount-range') || '{"min": "", "max": ""}')
+  );
+  const [showAnomaliesOnly, setShowAnomaliesOnly] = useState(() => 
+    localStorage.getItem('dashboard-show-anomalies') === 'true'
+  );
+  const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
+  const [recognition, setRecognition] = useState<any>(null);
 
   // Mock data matching the original image
   const totalSpent = 175786;
@@ -138,13 +152,125 @@ const Dashboard: React.FC = () => {
     { category: 'Bills', amount: 32626, percentage: 18.6, color: '#2196F3' },
   ];
 
-  // Voice search simulation
+  // Mock transactions data for filtering
+  const allTransactions = [
+    { id: 1, description: 'Food Court', amount: 650, category: 'Food', date: '2024-10-01', isAnomaly: false },
+    { id: 2, description: 'Grocery Store XYZ', amount: 4500, category: 'Food', date: '2024-10-01', isAnomaly: true },
+    { id: 3, description: 'Amazon Purchase', amount: 8900, category: 'Shopping', date: '2024-09-28', isAnomaly: true },
+    { id: 4, description: 'Electricity Bill', amount: 2800, category: 'Bills', date: '2024-09-25', isAnomaly: false },
+    { id: 5, description: 'Metro Card Recharge', amount: 500, category: 'Transport', date: '2024-09-24', isAnomaly: false },
+    { id: 6, description: 'Netflix Subscription', amount: 799, category: 'Entertainment', date: '2024-09-20', isAnomaly: false },
+    { id: 7, description: 'Restaurant Dinner', amount: 1200, category: 'Food', date: '2024-09-18', isAnomaly: false },
+    { id: 8, description: 'Shopping Mall', amount: 3500, category: 'Shopping', date: '2024-09-15', isAnomaly: false }
+  ];
+
+  // Initialize Web Speech API
+  React.useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = false;
+      recognitionInstance.lang = 'en-US';
+      
+      recognitionInstance.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setSearchQuery(transcript);
+        setIsListening(false);
+        setVoiceSearch(false);
+      };
+      
+      recognitionInstance.onerror = () => {
+        setIsListening(false);
+        setVoiceSearch(false);
+        alert('Voice recognition failed. Please try again.');
+      };
+      
+      recognitionInstance.onend = () => {
+        setIsListening(false);
+        setVoiceSearch(false);
+      };
+      
+      setRecognition(recognitionInstance);
+    }
+  }, []);
+
+  // Voice search functionality
   const handleVoiceSearch = () => {
+    if (!recognition) {
+      alert('Voice recognition not supported in this browser');
+      return;
+    }
+    
     setVoiceSearch(true);
-    setTimeout(() => {
-      setSearchQuery('Show me all food expenses last month above ₹500');
-      setVoiceSearch(false);
-    }, 2000);
+    setIsListening(true);
+    recognition.start();
+  };
+
+  // Filter transactions based on current filters
+  React.useEffect(() => {
+    let filtered = [...allTransactions];
+    
+    // Search filter
+    if (searchQuery) {
+      filtered = filtered.filter(t => 
+        t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.amount.toString().includes(searchQuery)
+      );
+    }
+    
+    // Category filter
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(t => t.category.toLowerCase() === selectedCategory.toLowerCase());
+    }
+    
+    // Amount range filter
+    if (amountRange.min) {
+      filtered = filtered.filter(t => t.amount >= parseInt(amountRange.min));
+    }
+    if (amountRange.max) {
+      filtered = filtered.filter(t => t.amount <= parseInt(amountRange.max));
+    }
+    
+    // Anomaly filter
+    if (showAnomaliesOnly) {
+      filtered = filtered.filter(t => t.isAnomaly);
+    }
+    
+    setFilteredTransactions(filtered);
+  }, [searchQuery, selectedCategory, amountRange, showAnomaliesOnly]);
+
+  // Save filters to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('dashboard-category', selectedCategory);
+  }, [selectedCategory]);
+
+  React.useEffect(() => {
+    localStorage.setItem('dashboard-date-filter', dateFilter);
+  }, [dateFilter]);
+
+  React.useEffect(() => {
+    localStorage.setItem('dashboard-amount-range', JSON.stringify(amountRange));
+  }, [amountRange]);
+
+  React.useEffect(() => {
+    localStorage.setItem('dashboard-show-anomalies', showAnomaliesOnly.toString());
+  }, [showAnomaliesOnly]);
+
+  // Apply filters function
+  const applyFilters = () => {
+    setFilterOpen(false);
+    // Filtering is handled by useEffect above
+  };
+
+  // Reset filters function
+  const resetFilters = () => {
+    setSelectedCategory('all');
+    setDateFilter('all');
+    setAmountRange({ min: '', max: '' });
+    setShowAnomaliesOnly(false);
+    setSearchQuery('');
   };
 
   // Calculate health score color
@@ -165,11 +291,11 @@ const Dashboard: React.FC = () => {
         {/* Transaction Search & Filters */}
         <Box display="flex" alignItems="center" gap={2}>
           <TextField
-            placeholder="Search transactions... (e.g., 'food expenses above ₹500')"
+            placeholder="Try: 'food expenses', 'shopping above 1000', 'bills last month'"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             size="small"
-            sx={{ minWidth: 300 }}
+            sx={{ minWidth: 350 }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -180,17 +306,32 @@ const Dashboard: React.FC = () => {
                 <InputAdornment position="end">
                   <IconButton 
                     onClick={handleVoiceSearch}
-                    color={voiceSearch ? "error" : "default"}
+                    color={isListening ? "error" : "default"}
+                    disabled={!recognition}
                   >
-                    {voiceSearch ? <CircularProgress size={20} /> : <Mic />}
+                    {isListening ? <CircularProgress size={20} /> : <Mic />}
                   </IconButton>
                 </InputAdornment>
               ),
             }}
           />
-          <IconButton onClick={() => setFilterOpen(true)}>
-            <FilterList />
+          <IconButton 
+            onClick={() => setFilterOpen(true)}
+            color={selectedCategory !== 'all' || showAnomaliesOnly ? 'primary' : 'default'}
+          >
+            <Badge 
+              badgeContent={filteredTransactions.length} 
+              color="primary"
+              max={99}
+            >
+              <FilterList />
+            </Badge>
           </IconButton>
+          {(selectedCategory !== 'all' || showAnomaliesOnly || searchQuery) && (
+            <Button size="small" onClick={resetFilters} variant="outlined">
+              Clear All
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -686,6 +827,71 @@ const Dashboard: React.FC = () => {
         </Card>
       </Box>
 
+      {/* Filtered Transactions Results */}
+      {(searchQuery || selectedCategory !== 'all' || showAnomaliesOnly) && (
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Typography variant="h6" fontWeight="bold">
+                Search Results
+              </Typography>
+              <Chip 
+                label={`${filteredTransactions.length} transactions`} 
+                color="primary"
+              />
+            </Box>
+            
+            {filteredTransactions.length > 0 ? (
+              <Box>
+                {filteredTransactions.slice(0, 5).map((transaction) => (
+                  <Card key={transaction.id} sx={{ mb: 2, bgcolor: transaction.isAnomaly ? '#fff3e0' : '#f9f9f9' }}>
+                    <CardContent sx={{ py: 2 }}>
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box display="flex" alignItems="center">
+                          <Avatar sx={{ width: 32, height: 32, mr: 2, bgcolor: 'primary.main' }}>
+                            {transaction.category[0]}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              {transaction.description}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {transaction.category} • {transaction.date}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Box textAlign="right">
+                          <Typography variant="h6" fontWeight="bold" color={transaction.isAnomaly ? 'warning.main' : 'text.primary'}>
+                            ₹{transaction.amount.toLocaleString()}
+                          </Typography>
+                          {transaction.isAnomaly && (
+                            <Chip label="Unusual" color="warning" size="small" />
+                          )}
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+                {filteredTransactions.length > 5 && (
+                  <Button variant="outlined" fullWidth sx={{ mt: 2 }}>
+                    View All {filteredTransactions.length} Results
+                  </Button>
+                )}
+              </Box>
+            ) : (
+              <Box textAlign="center" py={4}>
+                <Typography variant="body1" color="text.secondary">
+                  No transactions found matching your criteria
+                </Typography>
+                <Button onClick={resetFilters} sx={{ mt: 2 }}>
+                  Clear Filters
+                </Button>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Category Breakdown */}
       <Card>
         <CardContent>
@@ -747,8 +953,18 @@ const Dashboard: React.FC = () => {
                 Real Bank Integration Status
               </Typography>
             </Box>
-            <Button variant="outlined" size="small">
-              Manage Accounts
+            <Button 
+              variant="outlined" 
+              size="small"
+              onClick={() => {
+                // Open bank account selector
+                const confirmed = window.confirm('Do you want to connect a new bank account?');
+                if (confirmed) {
+                  alert('Opening Bank Account Connection...\n\nDemo: This would open the bank selector dialog.');
+                }
+              }}
+            >
+              Connect Bank
             </Button>
           </Box>
           
@@ -774,7 +990,16 @@ const Dashboard: React.FC = () => {
 
       {/* Filter Dialog */}
       <Dialog open={filterOpen} onClose={() => setFilterOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Advanced Transaction Filters</DialogTitle>
+        <DialogTitle>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            Advanced Transaction Filters
+            <Chip 
+              label={`${filteredTransactions.length} results`} 
+              color="primary" 
+              size="small" 
+            />
+          </Box>
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
             <FormControl fullWidth>
@@ -789,30 +1014,73 @@ const Dashboard: React.FC = () => {
                 <MenuItem value="shopping">Shopping</MenuItem>
                 <MenuItem value="bills">Bills & Utilities</MenuItem>
                 <MenuItem value="transport">Transportation</MenuItem>
+                <MenuItem value="entertainment">Entertainment</MenuItem>
               </Select>
             </FormControl>
             
-            <TextField
-              label="Amount Range"
-              placeholder="e.g., 500-5000"
-              fullWidth
-            />
+            <Box display="flex" gap={2}>
+              <TextField
+                label="Min Amount"
+                placeholder="₹500"
+                value={amountRange.min}
+                onChange={(e) => setAmountRange(prev => ({ ...prev, min: e.target.value }))}
+                type="number"
+                fullWidth
+              />
+              <TextField
+                label="Max Amount"
+                placeholder="₹5000"
+                value={amountRange.max}
+                onChange={(e) => setAmountRange(prev => ({ ...prev, max: e.target.value }))}
+                type="number"
+                fullWidth
+              />
+            </Box>
             
-            <TextField
-              label="Date Range"
-              placeholder="Last 30 days"
-              fullWidth
-            />
+            <FormControl fullWidth>
+              <InputLabel>Date Range</InputLabel>
+              <Select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                label="Date Range"
+              >
+                <MenuItem value="all">All Time</MenuItem>
+                <MenuItem value="today">Today</MenuItem>
+                <MenuItem value="week">This Week</MenuItem>
+                <MenuItem value="month">This Month</MenuItem>
+                <MenuItem value="quarter">This Quarter</MenuItem>
+              </Select>
+            </FormControl>
             
             <FormControlLabel
-              control={<Switch />}
-              label="Show only anomalies"
+              control={
+                <Switch 
+                  checked={showAnomaliesOnly}
+                  onChange={(e) => setShowAnomaliesOnly(e.target.checked)}
+                />
+              }
+              label="Show only unusual transactions"
             />
+
+            {/* Filter Preview */}
+            <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Filter Preview:
+              </Typography>
+              <Typography variant="body2">
+                {filteredTransactions.length} transactions found
+                {selectedCategory !== 'all' && ` in ${selectedCategory}`}
+                {amountRange.min && ` above ₹${amountRange.min}`}
+                {amountRange.max && ` below ₹${amountRange.max}`}
+                {showAnomaliesOnly && ` (anomalies only)`}
+              </Typography>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setFilterOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => setFilterOpen(false)}>Apply Filters</Button>
+          <Button onClick={resetFilters} color="secondary">Reset All</Button>
+          <Button variant="contained" onClick={applyFilters}>Apply Filters</Button>
         </DialogActions>
       </Dialog>
 

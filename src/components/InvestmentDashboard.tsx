@@ -374,7 +374,16 @@ const InvestmentDashboard: React.FC = () => {
               <Button 
                 variant="contained" 
                 startIcon={<Add />}
-                // onClick={() => setAddDialogOpen(true)}
+                onClick={() => {
+                  const symbol = prompt('Enter stock symbol (e.g., RELIANCE, TCS):');
+                  if (symbol) {
+                    const quantity = prompt('Enter quantity:');
+                    const price = prompt('Enter purchase price:');
+                    if (quantity && price) {
+                      alert(`Investment Added!\n\nStock: ${symbol}\nQuantity: ${quantity}\nPrice: ₹${price}\n\nThis would be saved to your portfolio.`);
+                    }
+                  }
+                }}
                 sx={{ borderRadius: 3 }}
               >
                 Add Investment
@@ -801,7 +810,12 @@ const InvestmentDashboard: React.FC = () => {
       <Fab 
         color="primary" 
         sx={{ position: 'fixed', bottom: 24, right: 24 }}
-        // onClick={() => setAddDialogOpen(true)}
+        onClick={() => {
+          const symbol = prompt('Quick Add Investment\n\nEnter stock symbol:');
+          if (symbol) {
+            alert(`Quick add for ${symbol} - Opening detailed form...`);
+          }
+        }}
       >
         <Add />
       </Fab>
