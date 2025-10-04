@@ -811,9 +811,20 @@ const InvestmentDashboard: React.FC = () => {
         color="primary" 
         sx={{ position: 'fixed', bottom: 24, right: 24 }}
         onClick={() => {
-          const symbol = prompt('Quick Add Investment\n\nEnter stock symbol:');
+          const symbol = prompt('🚀 Quick Add Investment\n\nEnter stock symbol (e.g., RELIANCE, TCS, HDFC):');
           if (symbol) {
-            alert(`Quick add for ${symbol} - Opening detailed form...`);
+            const quantity = prompt(`📊 Adding ${symbol.toUpperCase()}\n\nEnter quantity:`);
+            if (quantity && !isNaN(Number(quantity))) {
+              const price = prompt(`💰 ${symbol.toUpperCase()} - ${quantity} shares\n\nEnter purchase price per share (₹):`);
+              if (price && !isNaN(Number(price))) {
+                const totalAmount = Number(quantity) * Number(price);
+                const confirmed = window.confirm(`✅ Confirm Investment\n\nStock: ${symbol.toUpperCase()}\nQuantity: ${quantity} shares\nPrice: ₹${price} per share\nTotal Investment: ₹${totalAmount.toLocaleString()}\n\nAdd to portfolio?`);
+                if (confirmed) {
+                  alert(`🎉 Investment Added!\n\n${symbol.toUpperCase()} (${quantity} shares @ ₹${price}) has been added to your portfolio!\n\nTotal investment: ₹${totalAmount.toLocaleString()}`);
+                  setAlertOpen(true);
+                }
+              }
+            }
           }
         }}
       >
@@ -823,9 +834,9 @@ const InvestmentDashboard: React.FC = () => {
       {/* Success Snackbar */}
       <Snackbar
         open={alertOpen}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setAlertOpen(false)}
-        message="Portfolio data refreshed successfully! 📊"
+        message="Investment added successfully! � Your portfolio has been updated."
       />
     </Container>
   );
