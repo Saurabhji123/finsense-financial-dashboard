@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/finsense-financial-dashboard/static/css/main.e6c13ad2.css",
-    "main.js": "/finsense-financial-dashboard/static/js/main.2952a86b.js",
+    "main.js": "/finsense-financial-dashboard/static/js/main.898b0eae.js",
     "static/js/453.c8707c46.chunk.js": "/finsense-financial-dashboard/static/js/453.c8707c46.chunk.js",
     "index.html": "/finsense-financial-dashboard/index.html",
     "main.e6c13ad2.css.map": "/finsense-financial-dashboard/static/css/main.e6c13ad2.css.map",
-    "main.2952a86b.js.map": "/finsense-financial-dashboard/static/js/main.2952a86b.js.map",
+    "main.898b0eae.js.map": "/finsense-financial-dashboard/static/js/main.898b0eae.js.map",
     "453.c8707c46.chunk.js.map": "/finsense-financial-dashboard/static/js/453.c8707c46.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.2952a86b.js"
+    "static/js/main.898b0eae.js"
   ]
 }
