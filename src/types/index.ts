@@ -70,3 +70,42 @@ export interface SMSPattern {
     date?: (text: string) => Date;
   };
 }
+
+export interface RealBankAccount {
+  id: string;
+  bankName: string;
+  accountNumber: string;
+  accountType: 'Savings' | 'Current' | 'Credit Card';
+  balance?: number;
+  isConnected: boolean;
+  lastSyncTime?: Date;
+}
+
+export interface UPIApp {
+  id: string;
+  name: string;
+  upiId?: string;
+  isConnected: boolean;
+}
+
+export interface Investment {
+  id: string;
+  symbol: string;
+  name: string;
+  quantity: number;
+  purchasePrice: number;
+  currentPrice: number;
+  sector: string;
+  purchaseDate: string;
+  type: 'equity' | 'mutual_fund' | 'etf' | 'bonds';
+}
+
+export interface Goal {
+  id: number;
+  name: string;
+  saved: number;
+  target: number;
+  percentage: number;
+  aiRecommendation: number;
+  timeline: string;
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -31,6 +31,40 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
   const theme = useTheme();
   const { userProfile, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [profileName, setProfileName] = useState(userProfile?.name || 'User');
+
+  // Listen for profile updates from localStorage
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      const savedProfile = localStorage.getItem('user-profile');
+      if (savedProfile) {
+        const profile = JSON.parse(savedProfile);
+        setProfileName(profile.name || 'User');
+      }
+    };
+
+    // Listen for localStorage changes (cross-tab updates)
+    window.addEventListener('storage', handleProfileUpdate);
+    
+    // Listen for custom profile update events (same-tab updates)
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    
+    // Check for updates every 2 seconds (fallback)
+    const interval = setInterval(handleProfileUpdate, 2000);
+
+    return () => {
+      window.removeEventListener('storage', handleProfileUpdate);
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Update profile name when userProfile changes
+  useEffect(() => {
+    if (userProfile?.name) {
+      setProfileName(userProfile.name);
+    }
+  }, [userProfile]);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -127,7 +161,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
             <MenuItem disabled>
               <Box>
                 <Typography variant="subtitle2" fontWeight="bold">
-                  {userProfile?.name || 'User'}
+                  {profileName}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {userProfile?.email}

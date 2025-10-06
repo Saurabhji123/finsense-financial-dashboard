@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { RealBankAccount, UPIApp, Investment, Goal } from '../types';
 import {
   Box,
   Typography,
@@ -49,7 +50,9 @@ import {
   Schedule,
   ReceiptLong,
   PsychologyAlt,
-  Speed
+  Speed,
+  TrendingUp as TrendingUpIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
 
 const Dashboard: React.FC = () => {
@@ -74,11 +77,207 @@ const Dashboard: React.FC = () => {
   );
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
   const [recognition, setRecognition] = useState<any>(null);
+  
+  // Bank and UPI state management with localStorage persistence
+  const [connectedBankAccounts, setConnectedBankAccounts] = useState<RealBankAccount[]>([]);
+  const [connectedUPIApps, setConnectedUPIApps] = useState<UPIApp[]>([]);
+  const [showSmartBudgetPopup, setShowSmartBudgetPopup] = useState(false);
+  
+  // Investment tracking state
+  const [investments, setInvestments] = useState<any[]>([]);
+  const [portfolioValue, setPortfolioValue] = useState(0);
+  const [portfolioGain, setPortfolioGain] = useState(0);
+  
+  // Goals state management with localStorage persistence
+  const [goals, setGoals] = useState<Goal[]>(() => {
+    const savedGoals = localStorage.getItem('finsense_goals');
+    return savedGoals ? JSON.parse(savedGoals) : [
+      { 
+        id: 1,
+        name: 'Dream Home', 
+        saved: 1500000, 
+        target: 5000000, 
+        percentage: 30,
+        aiRecommendation: 25000,
+        timeline: '8 years 4 months'
+      },
+      { 
+        id: 2,
+        name: 'Emergency Fund', 
+        saved: 300000, 
+        target: 500000, 
+        percentage: 60,
+        aiRecommendation: 15000,
+        timeline: '1 year 2 months'
+      }
+    ];
+  });
+  
+  // New goal form state
+  const [newGoal, setNewGoal] = useState({
+    name: '',
+    target: '',
+    saved: ''
+  });
+  
+  // Bank addition dialog state
+  const [bankDialogOpen, setBankDialogOpen] = useState(false);
+  const [newBankAccount, setNewBankAccount] = useState({
+    bankName: '',
+    accountNumber: '',
+    accountType: 'Savings' as 'Savings' | 'Current',
+    balance: ''
+  });
+  
+  // UPI addition dialog state
+  const [upiDialogOpen, setUpiDialogOpen] = useState(false);
+  const [newUPIApp, setNewUPIApp] = useState({
+    name: '',
+    upiId: ''
+  });
+  
+  // Real-time transaction state
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [totalBalance, setTotalBalance] = useState(0);
+  
+  // Notification state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Mock data matching the original image
-  const totalSpent = 175786;
-  const totalIncome = 99805;
-  const totalTransactions = 108;
+  // Load persisted data on component mount
+  useEffect(() => {
+    // Load bank accounts from localStorage
+    const savedBankAccounts = localStorage.getItem('connected-bank-accounts');
+    if (savedBankAccounts) {
+      setConnectedBankAccounts(JSON.parse(savedBankAccounts));
+    } else {
+      // Initialize with demo bank account
+      const demoBankAccount: RealBankAccount = {
+        id: 'sbi-001',
+        bankName: 'State Bank of India',
+        accountNumber: '****1234',
+        accountType: 'Savings',
+        balance: 45630,
+        isConnected: true,
+        lastSyncTime: new Date()
+      };
+      setConnectedBankAccounts([demoBankAccount]);
+      localStorage.setItem('connected-bank-accounts', JSON.stringify([demoBankAccount]));
+    }
+
+    // Load UPI apps from localStorage
+    const savedUPIApps = localStorage.getItem('connected-upi-apps');
+    if (savedUPIApps) {
+      setConnectedUPIApps(JSON.parse(savedUPIApps));
+    } else {
+      // Initialize with demo UPI apps
+      const demoUPIApps: UPIApp[] = [
+        { id: 'phonepe-1', name: 'PhonePe', upiId: 'user@phonepe', isConnected: true },
+        { id: 'gpay-1', name: 'Google Pay', upiId: 'user@gpay', isConnected: true },
+        { id: 'paytm-1', name: 'Paytm', upiId: 'user@paytm', isConnected: true }
+      ];
+      setConnectedUPIApps(demoUPIApps);
+      localStorage.setItem('connected-upi-apps', JSON.stringify(demoUPIApps));
+    }
+
+    // Load investments from localStorage
+    const savedInvestments = localStorage.getItem('portfolio-investments');
+    if (savedInvestments) {
+      setInvestments(JSON.parse(savedInvestments));
+    } else {
+      // Initialize with demo investments
+      const demoInvestments = [
+        { symbol: 'RELIANCE', name: 'Reliance Industries', quantity: 25, buyPrice: 2400, currentPrice: 2520, gain: 3000 },
+        { symbol: 'TCS', name: 'Tata Consultancy Services', quantity: 15, buyPrice: 3200, currentPrice: 3350, gain: 2250 },
+        { symbol: 'INFY', name: 'Infosys Limited', quantity: 30, buyPrice: 1450, currentPrice: 1580, gain: 3900 },
+        { symbol: 'HDFC', name: 'HDFC Bank', quantity: 20, buyPrice: 1650, currentPrice: 1720, gain: 1400 }
+      ];
+      setInvestments(demoInvestments);
+      localStorage.setItem('portfolio-investments', JSON.stringify(demoInvestments));
+    }
+
+    // Load recent transactions
+    const savedTransactions = localStorage.getItem('recent-transactions');
+    if (savedTransactions) {
+      setRecentTransactions(JSON.parse(savedTransactions));
+    } else {
+      // Initialize with demo transactions
+      const demoTransactions = [
+        { id: 1, description: 'Swiggy Order', amount: -450, type: 'debit', category: 'Food', time: new Date(), method: 'UPI' },
+        { id: 2, description: 'Salary Credit', amount: 75000, type: 'credit', category: 'Income', time: new Date(Date.now() - 86400000), method: 'Bank Transfer' },
+        { id: 3, description: 'Amazon Purchase', amount: -1299, type: 'debit', category: 'Shopping', time: new Date(Date.now() - 172800000), method: 'Card' },
+        { id: 4, description: 'Netflix Subscription', amount: -799, type: 'debit', category: 'Entertainment', time: new Date(Date.now() - 259200000), method: 'UPI' }
+      ];
+      setRecentTransactions(demoTransactions);
+      localStorage.setItem('recent-transactions', JSON.stringify(demoTransactions));
+    }
+  }, []);
+
+  // Real-time monitoring and updates
+  useEffect(() => {
+    // Update portfolio value from investments
+    const totalValue = investments.reduce((sum, inv) => sum + (inv.quantity * inv.currentPrice), 0);
+    const totalGain = investments.reduce((sum, inv) => sum + inv.gain, 0);
+    setPortfolioValue(totalValue);
+    setPortfolioGain(totalGain);
+
+    // Update total balance from bank accounts
+    const totalBankBalance = connectedBankAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+    setTotalBalance(totalBankBalance);
+
+    // Simulate real-time stock price updates
+    const stockUpdateInterval = setInterval(() => {
+      setInvestments(prevInvestments => {
+        const updatedInvestments = prevInvestments.map(inv => {
+          const priceChange = (Math.random() - 0.5) * 50; // Random price change
+          const newPrice = Math.max(inv.currentPrice + priceChange, inv.currentPrice * 0.9);
+          const newGain = (newPrice - inv.buyPrice) * inv.quantity;
+          return { ...inv, currentPrice: Math.round(newPrice), gain: Math.round(newGain) };
+        });
+        localStorage.setItem('portfolio-investments', JSON.stringify(updatedInvestments));
+        return updatedInvestments;
+      });
+    }, 30000); // Update every 30 seconds
+
+    // Simulate new transactions
+    const transactionInterval = setInterval(() => {
+      if (Math.random() < 0.3) { // 30% chance of new transaction
+        const merchants = ['Zomato', 'Uber', 'Amazon', 'PhonePe', 'Netflix', 'Spotify'];
+        const categories = ['Food', 'Transport', 'Shopping', 'Transfer', 'Entertainment'];
+        const amounts = [-299, -450, -850, -1200, -199, -99];
+        
+        const newTransaction = {
+          id: Date.now(),
+          description: merchants[Math.floor(Math.random() * merchants.length)],
+          amount: amounts[Math.floor(Math.random() * amounts.length)],
+          type: 'debit',
+          category: categories[Math.floor(Math.random() * categories.length)],
+          time: new Date(),
+          method: Math.random() > 0.5 ? 'UPI' : 'Card'
+        };
+        
+        setRecentTransactions(prev => {
+          const updated = [newTransaction, ...prev.slice(0, 9)]; // Keep only 10 recent
+          localStorage.setItem('recent-transactions', JSON.stringify(updated));
+          return updated;
+        });
+        
+        // Update notification count
+        setUnreadCount(prev => prev + 1);
+      }
+    }, 45000); // Check every 45 seconds
+
+    return () => {
+      clearInterval(stockUpdateInterval);
+      clearInterval(transactionInterval);
+    };
+  }, [investments, connectedBankAccounts]);
+
+  // Dynamic calculations based on real data
+  const totalSpent = Math.abs(recentTransactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + Math.abs(t.amount), 0));
+  // Calculate realistic income - dynamic based on credit transactions
+  const totalIncome = recentTransactions.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0) || 158000;
+  const totalTransactions = recentTransactions.length + 98; // Current transactions + historical base
   const topCategory = 'Transfer';
 
   // Financial Health Score (0-100)
@@ -105,25 +304,75 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Goals Data
-  const goals = [
-    { 
-      name: 'Dream Home', 
-      saved: 1500000, 
-      target: 5000000, 
-      percentage: 30,
-      aiRecommendation: 25000,
-      timeline: '8 years 4 months'
-    },
-    { 
-      name: 'Emergency Fund', 
-      saved: 300000, 
-      target: 500000, 
-      percentage: 60,
-      aiRecommendation: 15000,
-      timeline: '1 year 2 months'
+  // Add new goal function
+  const addNewGoal = () => {
+    if (newGoal.name && newGoal.target && newGoal.saved) {
+      const targetAmount = parseFloat(newGoal.target);
+      const savedAmount = parseFloat(newGoal.saved);
+      const percentage = Math.round((savedAmount / targetAmount) * 100);
+      const remainingAmount = targetAmount - savedAmount;
+      const monthlyRecommendation = Math.max(5000, Math.round(remainingAmount / 24)); // Suggest 2-year timeline
+      const timelineYears = Math.ceil(remainingAmount / (monthlyRecommendation * 12));
+      const timelineMonths = Math.ceil((remainingAmount % (monthlyRecommendation * 12)) / monthlyRecommendation);
+      
+      const goal = {
+        id: Date.now(),
+        name: newGoal.name,
+        saved: savedAmount,
+        target: targetAmount,
+        percentage: percentage,
+        aiRecommendation: monthlyRecommendation,
+        timeline: `${timelineYears} year${timelineYears > 1 ? 's' : ''} ${timelineMonths} month${timelineMonths > 1 ? 's' : ''}`
+      };
+      
+      const updatedGoals = [...goals, goal];
+      setGoals(updatedGoals);
+      localStorage.setItem('finsense_goals', JSON.stringify(updatedGoals));
+      
+      // Reset form
+      setNewGoal({ name: '', target: '', saved: '' });
+      setGoalDialogOpen(false);
     }
-  ];
+  };
+  
+  // Add new bank account function
+  const addNewBankAccount = () => {
+    if (newBankAccount.bankName && newBankAccount.accountNumber && newBankAccount.balance) {
+      const bankAccount: RealBankAccount = {
+        id: `${newBankAccount.bankName.toLowerCase().replace(/\s+/g, '')}-${Date.now()}`,
+        bankName: newBankAccount.bankName,
+        accountNumber: newBankAccount.accountNumber,
+        accountType: newBankAccount.accountType,
+        balance: parseFloat(newBankAccount.balance),
+        isConnected: true,
+        lastSyncTime: new Date()
+      };
+      
+      handleConnectBankAccount(bankAccount);
+      
+      // Reset form
+      setNewBankAccount({ bankName: '', accountNumber: '', accountType: 'Savings', balance: '' });
+      setBankDialogOpen(false);
+    }
+  };
+  
+  // Add new UPI app function
+  const addNewUPIApp = () => {
+    if (newUPIApp.name && newUPIApp.upiId) {
+      const upiApp: UPIApp = {
+        id: `${newUPIApp.name.toLowerCase().replace(/\s+/g, '')}-${Date.now()}`,
+        name: newUPIApp.name,
+        upiId: newUPIApp.upiId,
+        isConnected: true
+      };
+      
+      handleConnectUPI(upiApp);
+      
+      // Reset form
+      setNewUPIApp({ name: '', upiId: '' });
+      setUpiDialogOpen(false);
+    }
+  };
 
   // Anomalies Data
   const anomalies = [
@@ -151,6 +400,45 @@ const Dashboard: React.FC = () => {
     { category: 'Shopping', amount: 49853, percentage: 28.4, color: '#4ECDC4' },
     { category: 'Bills', amount: 32626, percentage: 18.6, color: '#2196F3' },
   ];
+
+  // Handler functions for bank account management
+  const handleConnectBankAccount = (bankAccount: RealBankAccount) => {
+    const updatedAccounts = [...connectedBankAccounts, bankAccount];
+    setConnectedBankAccounts(updatedAccounts);
+    localStorage.setItem('connected-bank-accounts', JSON.stringify(updatedAccounts));
+    console.log(`Successfully connected to ${bankAccount.bankName}!`);
+  };
+
+  const handleDisconnectBankAccount = (accountId: string) => {
+    const account = connectedBankAccounts.find(acc => acc.id === accountId);
+    if (account && window.confirm(`Are you sure you want to disconnect ${account.bankName}?`)) {
+      const updatedAccounts = connectedBankAccounts.filter(acc => acc.id !== accountId);
+      setConnectedBankAccounts(updatedAccounts);
+      localStorage.setItem('connected-bank-accounts', JSON.stringify(updatedAccounts));
+      console.log(`Disconnected from ${account.bankName}`);
+    }
+  };
+
+  // Handler functions for UPI management
+  const handleConnectUPI = (upiApp: UPIApp) => {
+    const existingApp = connectedUPIApps.find(app => app.name === upiApp.name);
+    if (!existingApp) {
+      const updatedUPIApps = [...connectedUPIApps, upiApp];
+      setConnectedUPIApps(updatedUPIApps);
+      localStorage.setItem('connected-upi-apps', JSON.stringify(updatedUPIApps));
+      console.log(`Successfully connected to ${upiApp.name}!`);
+    }
+  };
+
+  const handleDisconnectUPI = (upiId: string) => {
+    const upiApp = connectedUPIApps.find(app => app.id === upiId);
+    if (upiApp && window.confirm(`Are you sure you want to disconnect ${upiApp.name}?`)) {
+      const updatedUPIApps = connectedUPIApps.filter(app => app.id !== upiId);
+      setConnectedUPIApps(updatedUPIApps);
+      localStorage.setItem('connected-upi-apps', JSON.stringify(updatedUPIApps));
+      console.log(`Disconnected from ${upiApp.name}`);
+    }
+  };
 
   // Mock transactions data for filtering
   const allTransactions = [
@@ -648,31 +936,94 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card sx={{ border: 2, borderColor: '#2196f3', bgcolor: '#e3f2fd' }}>
+            <Card 
+              sx={{ 
+                border: 2, 
+                borderColor: connectedUPIApps.length > 0 ? '#4caf50' : '#2196f3', 
+                bgcolor: connectedUPIApps.length > 0 ? '#e8f5e8' : '#e3f2fd', 
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 }
+              }}
+              onClick={() => setUpiDialogOpen(true)}
+            >
               <CardContent sx={{ textAlign: 'center' }}>
-                <Phone sx={{ fontSize: 40, color: '#2196f3', mb: 1 }} />
-                <Typography variant="subtitle1" fontWeight="bold" color="#2196f3">
+                <Phone sx={{ 
+                  fontSize: 40, 
+                  color: connectedUPIApps.length > 0 ? '#4caf50' : '#2196f3', 
+                  mb: 1 
+                }} />
+                <Typography variant="subtitle1" fontWeight="bold" 
+                  color={connectedUPIApps.length > 0 ? '#4caf50' : '#2196f3'}>
                   UPI Monitoring
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Tracking all UPI apps
+                  {connectedUPIApps.length > 0 
+                    ? `${connectedUPIApps.length} apps connected` 
+                    : 'Click to connect UPI apps'}
                 </Typography>
+                {connectedUPIApps.length > 0 && (
+                  <Box sx={{ mt: 1 }}>
+                    {connectedUPIApps.slice(0, 3).map((app, index) => (
+                      <Chip 
+                        key={app.id}
+                        label={app.name} 
+                        size="small" 
+                        sx={{ mr: 0.5, fontSize: '0.7rem' }}
+                        color="success"
+                        variant="outlined"
+                      />
+                    ))}
+                    {connectedUPIApps.length > 3 && (
+                      <Typography variant="caption" color="text.secondary">
+                        +{connectedUPIApps.length - 3} more
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </CardContent>
             </Card>
 
-            <Card sx={{ border: 1, borderColor: '#e0e0e0', bgcolor: '#f5f5f5' }}>
+            <Card 
+              sx={{ 
+                border: 2, 
+                borderColor: connectedBankAccounts.length > 0 ? '#4caf50' : '#ff9800', 
+                bgcolor: connectedBankAccounts.length > 0 ? '#e8f5e8' : '#fff3e0',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 }
+              }}
+              onClick={() => setBankDialogOpen(true)}
+            >
               <CardContent sx={{ textAlign: 'center' }}>
-                <AccountBalance sx={{ fontSize: 40, color: '#9e9e9e', mb: 1 }} />
-                <Typography variant="subtitle1" fontWeight="bold" color="#9e9e9e">
+                <AccountBalance sx={{ 
+                  fontSize: 40, 
+                  color: connectedBankAccounts.length > 0 ? '#4caf50' : '#ff9800', 
+                  mb: 1 
+                }} />
+                <Typography variant="subtitle1" fontWeight="bold" 
+                  color={connectedBankAccounts.length > 0 ? '#4caf50' : '#ff9800'}>
                   Bank Integration
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Starting...
+                  {connectedBankAccounts.length > 0 
+                    ? `${connectedBankAccounts.length} banks connected` 
+                    : 'Click to connect banks'}
                 </Typography>
+                {connectedBankAccounts.length > 0 && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" color="success.main" fontWeight="bold">
+                      ₹{totalBalance.toLocaleString()} total balance
+                    </Typography>
+                  </Box>
+                )}
               </CardContent>
             </Card>
 
-            <Card sx={{ border: 2, borderColor: '#4caf50', bgcolor: '#f1f8e9' }}>
+            <Card 
+              sx={{ border: 2, borderColor: '#4caf50', bgcolor: '#f1f8e9', cursor: 'pointer' }}
+              onClick={() => setShowSmartBudgetPopup(true)}
+            >
               <CardContent sx={{ textAlign: 'center' }}>
                 <Assessment sx={{ fontSize: 40, color: '#4caf50', mb: 1 }} />
                 <Typography variant="subtitle1" fontWeight="bold" color="#4caf50">
@@ -681,21 +1032,150 @@ const Dashboard: React.FC = () => {
                 <Typography variant="body2" color="text.secondary">
                   AI-powered monitoring
                 </Typography>
+                <Typography variant="body2" color="#4caf50" sx={{ mt: 1 }}>
+                  Click to view insights
+                </Typography>
               </CardContent>
             </Card>
 
-            <Card sx={{ border: 1, borderColor: '#e0e0e0', bgcolor: '#f5f5f5' }}>
+            <Card 
+              sx={{ 
+                border: 2, 
+                borderColor: portfolioGain >= 0 ? '#4caf50' : '#f44336', 
+                bgcolor: portfolioGain >= 0 ? '#e8f5e8' : '#ffebee',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 }
+              }}
+              onClick={() => {
+                const stocksToAdd = ['WIPRO', 'BHARTIARTL', 'ITC', 'SBIN', 'MARUTI'];
+                const unownedStocks = stocksToAdd.filter(stock => 
+                  !investments.some(inv => inv.symbol === stock)
+                );
+                
+                if (unownedStocks.length > 0) {
+                  const stockToAdd = unownedStocks[0];
+                  const confirmed = window.confirm(`Add ${stockToAdd} to your portfolio?`);
+                  if (confirmed) {
+                    const basePrice = Math.floor(1000 + Math.random() * 2000);
+                    const quantity = Math.floor(5 + Math.random() * 25);
+                    const currentPrice = basePrice + Math.floor((Math.random() - 0.5) * 200);
+                    const newInvestment = {
+                      symbol: stockToAdd,
+                      name: `${stockToAdd} Limited`,
+                      quantity: quantity,
+                      buyPrice: basePrice,
+                      currentPrice: currentPrice,
+                      gain: (currentPrice - basePrice) * quantity
+                    };
+                    
+                    const updatedInvestments = [...investments, newInvestment];
+                    setInvestments(updatedInvestments);
+                    localStorage.setItem('portfolio-investments', JSON.stringify(updatedInvestments));
+                  }
+                }
+              }}
+            >
               <CardContent sx={{ textAlign: 'center' }}>
-                <TrendingUp sx={{ fontSize: 40, color: '#9e9e9e', mb: 1 }} />
-                <Typography variant="subtitle1" fontWeight="bold" color="#9e9e9e">
+                <TrendingUp sx={{ 
+                  fontSize: 40, 
+                  color: portfolioGain >= 0 ? '#4caf50' : '#f44336', 
+                  mb: 1 
+                }} />
+                <Typography variant="subtitle1" fontWeight="bold" 
+                  color={portfolioGain >= 0 ? '#4caf50' : '#f44336'}>
                   Investment Tracking
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Starting...
+                  {investments.length > 0 
+                    ? `${investments.length} stocks in portfolio` 
+                    : 'Click to add investments'}
                 </Typography>
+                {investments.length > 0 && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" 
+                      color={portfolioGain >= 0 ? 'success.main' : 'error.main'} 
+                      fontWeight="bold">
+                      ₹{portfolioValue.toLocaleString()} 
+                      ({portfolioGain >= 0 ? '+' : ''}₹{portfolioGain.toLocaleString()})
+                    </Typography>
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Box>
+
+          {/* Real-time Transactions */}
+          <Card sx={{ mt: 3, border: 1, borderColor: '#e0e0e0' }}>
+            <CardContent>
+              <Box display="flex" alignItems="center" justifyContent="between" mb={2}>
+                <Typography variant="h6" fontWeight="bold">
+                  Recent Transactions
+                </Typography>
+                <Badge badgeContent={unreadCount} color="error">
+                  <NotificationsActive color="primary" />
+                </Badge>
+              </Box>
+              
+              {recentTransactions.length > 0 ? (
+                <Box>
+                  {recentTransactions.slice(0, 5).map((transaction) => (
+                    <Box key={transaction.id} 
+                      sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        py: 1.5,
+                        px: 2,
+                        mb: 1,
+                        borderRadius: 1,
+                        bgcolor: transaction.type === 'credit' ? '#e8f5e8' : '#fff3e0',
+                        border: 1,
+                        borderColor: transaction.type === 'credit' ? '#4caf50' : '#ff9800'
+                      }}
+                    >
+                      <Box display="flex" alignItems="center">
+                        <Avatar sx={{ 
+                          bgcolor: transaction.type === 'credit' ? '#4caf50' : '#ff9800', 
+                          width: 32, height: 32, mr: 2 
+                        }}>
+                          {transaction.type === 'credit' ? '+' : '-'}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight="bold">
+                            {transaction.description}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {transaction.category} • {transaction.method} • {new Date(transaction.time).toLocaleTimeString()}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Typography 
+                        variant="h6" 
+                        fontWeight="bold"
+                        color={transaction.type === 'credit' ? 'success.main' : 'warning.main'}
+                      >
+                        {transaction.type === 'credit' ? '+' : ''}₹{Math.abs(transaction.amount).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  ))}
+                  <Box sx={{ textAlign: 'center', mt: 2 }}>
+                    <Button 
+                      size="small" 
+                      onClick={() => setUnreadCount(0)}
+                      disabled={unreadCount === 0}
+                    >
+                      Mark All as Read ({unreadCount} new)
+                    </Button>
+                  </Box>
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary" textAlign="center" py={3}>
+                  No recent transactions
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Bank Data Status */}
           <Box sx={{ mt: 3, p: 2, bgcolor: '#e8f5e8', borderRadius: 1, border: 1, borderColor: '#4caf50' }}>
@@ -957,10 +1437,20 @@ const Dashboard: React.FC = () => {
               variant="outlined" 
               size="small"
               onClick={() => {
-                // Open bank account selector
+                // Demo: Add a sample bank account
                 const confirmed = window.confirm('Do you want to connect a new bank account?');
                 if (confirmed) {
-                  alert('Opening Bank Account Connection...\n\nDemo: This would open the bank selector dialog.');
+                  const newBankAccount: RealBankAccount = {
+                    id: Date.now().toString(),
+                    bankName: 'State Bank of India',
+                    accountNumber: '****1234',
+                    accountType: 'Savings',
+                    balance: 45650,
+                    isConnected: true,
+                    lastSyncTime: new Date()
+                  };
+                  handleConnectBankAccount(newBankAccount);
+                  alert(`Successfully connected to ${newBankAccount.bankName}!`);
                 }
               }}
             >
@@ -968,23 +1458,192 @@ const Dashboard: React.FC = () => {
             </Button>
           </Box>
           
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 3 }}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">Connected Banks</Typography>
-              <Typography variant="h6" fontWeight="bold">State Bank of India</Typography>
-              <Typography variant="body2" color="success.main">✅ Real-time sync active</Typography>
+          {connectedBankAccounts.length > 0 ? (
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 3 }}>
+              {connectedBankAccounts.map((account) => (
+                <Box key={account.id} sx={{ border: '1px solid #e0e0e0', borderRadius: 2, p: 2 }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                    <Typography variant="body2" color="text.secondary">Connected Bank</Typography>
+                    <IconButton 
+                      size="small" 
+                      color="error"
+                      onClick={() => handleDisconnectBankAccount(account.id)}
+                      title="Disconnect Account"
+                    >
+                      ❌
+                    </IconButton>
+                  </Box>
+                  <Typography variant="h6" fontWeight="bold">{account.bankName}</Typography>
+                  <Typography variant="body2" color="text.secondary">{account.accountNumber}</Typography>
+                  <Typography variant="body2" color="success.main">✅ Real-time sync active</Typography>
+                  {account.balance && (
+                    <Typography variant="body2" color="text.primary">
+                      Balance: ₹{account.balance.toLocaleString()}
+                    </Typography>
+                  )}
+                </Box>
+              ))}
             </Box>
-            <Box>
-              <Typography variant="body2" color="text.secondary">Last Sync</Typography>
-              <Typography variant="h6" fontWeight="bold">2 minutes ago</Typography>
-              <Typography variant="body2" color="success.main">✅ Auto-sync enabled</Typography>
+          ) : (
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 3 }}>
+              <Box>
+                <Typography variant="body2" color="text.secondary">Connected Banks</Typography>
+                <Typography variant="h6" fontWeight="bold" color="text.disabled">No banks connected</Typography>
+                <Typography variant="body2" color="text.disabled">Connect your bank to get real-time data</Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">Last Sync</Typography>
+                <Typography variant="h6" fontWeight="bold" color="text.disabled">Never</Typography>
+                <Typography variant="body2" color="text.disabled">Connect a bank to sync</Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">Data Quality</Typography>
+                <Typography variant="h6" fontWeight="bold" color="text.disabled">N/A</Typography>
+                <Typography variant="body2" color="text.disabled">Awaiting connection</Typography>
+              </Box>
             </Box>
-            <Box>
-              <Typography variant="body2" color="text.secondary">Data Quality</Typography>
-              <Typography variant="h6" fontWeight="bold">98.5%</Typography>
-              <Typography variant="body2" color="success.main">✅ High accuracy</Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Investment Portfolio Section */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box display="flex" alignItems="center" justifyContent="between" mb={2}>
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              📈 Investment Portfolio
+              <Chip 
+                label={`${investments.length} Holdings`}
+                size="small" 
+                color="primary"
+                variant="outlined"
+              />
+            </Typography>
+            <Box display="flex" gap={1}>
+              <Chip 
+                label={`Total: ₹${portfolioValue.toLocaleString()}`}
+                color="success"
+                size="small"
+              />
+              <Chip 
+                label={`${portfolioGain >= 0 ? '+' : ''}${portfolioGain.toFixed(2)}%`}
+                color={portfolioGain >= 0 ? "success" : "error"}
+                size="small"
+              />
             </Box>
           </Box>
+
+          {investments.length > 0 ? (
+            <Box display="flex" flexWrap="wrap" gap={2}>
+              {investments.map((investment) => {
+                const gainLoss = investment.currentPrice - investment.purchasePrice;
+                const gainLossPercent = ((gainLoss / investment.purchasePrice) * 100);
+                const totalValue = investment.currentPrice * investment.quantity;
+                
+                return (
+                  <Box key={investment.id} sx={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '400px' }}>
+                    <Card variant="outlined" sx={{ height: '100%' }}>
+                      <CardContent sx={{ p: 2 }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={1}>
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              {investment.symbol}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {investment.name}
+                            </Typography>
+                          </Box>
+                          <Chip 
+                            label={investment.sector}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        </Box>
+                        
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                          <Typography variant="h6" fontWeight="bold">
+                            ₹{investment.currentPrice.toFixed(2)}
+                          </Typography>
+                          <Chip
+                            label={`${gainLoss >= 0 ? '+' : ''}₹${gainLoss.toFixed(2)}`}
+                            color={gainLoss >= 0 ? "success" : "error"}
+                            size="small"
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        </Box>
+
+                        <Box display="flex" justifyContent="space-between" mb={1}>
+                          <Typography variant="body2" color="text.secondary">
+                            Qty: {investment.quantity}
+                          </Typography>
+                          <Typography variant="body2" color={gainLossPercent >= 0 ? "success.main" : "error.main"}>
+                            {gainLossPercent >= 0 ? '+' : ''}{gainLossPercent.toFixed(2)}%
+                          </Typography>
+                        </Box>
+
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography variant="body2" color="text.secondary">
+                            Total Value
+                          </Typography>
+                          <Typography variant="subtitle2" fontWeight="bold">
+                            ₹{totalValue.toLocaleString()}
+                          </Typography>
+                        </Box>
+
+                        <LinearProgress 
+                          variant="determinate" 
+                          value={Math.min(100, Math.max(0, 50 + (gainLossPercent * 2)))}
+                          color={gainLossPercent >= 0 ? "success" : "error"}
+                          sx={{ mt: 1, height: 4, borderRadius: 2 }}
+                        />
+                      </CardContent>
+                    </Card>
+                  </Box>
+                );
+              })}
+            </Box>
+          ) : (
+            <Box 
+              display="flex" 
+              flexDirection="column" 
+              alignItems="center" 
+              justifyContent="center" 
+              py={4}
+              sx={{ textAlign: 'center' }}
+            >
+              <TrendingUpIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No Investments Yet
+              </Typography>
+              <Typography variant="body2" color="text.disabled" mb={2}>
+                Start building your investment portfolio
+              </Typography>
+              <Button 
+                variant="outlined" 
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  // Add sample investment for demo
+                  const sampleInvestment: Investment = {
+                    id: Date.now().toString(),
+                    symbol: 'RELIANCE',
+                    name: 'Reliance Industries Ltd',
+                    quantity: 10,
+                    purchasePrice: 2450.50,
+                    currentPrice: 2567.80,
+                    sector: 'Energy',
+                    purchaseDate: new Date().toISOString(),
+                    type: 'equity'
+                  };
+                  const updatedInvestments = [...investments, sampleInvestment];
+                  setInvestments(updatedInvestments);
+                  localStorage.setItem('finsense_investments', JSON.stringify(updatedInvestments));
+                }}
+              >
+                Add Sample Investment
+              </Button>
+            </Box>
+          )}
         </CardContent>
       </Card>
 
@@ -1135,9 +1794,48 @@ const Dashboard: React.FC = () => {
             ))}
           </Box>
         </DialogContent>
+        <DialogContent>
+          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+            Add New Goal
+          </Typography>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              label="Goal Name"
+              value={newGoal.name}
+              onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })}
+              fullWidth
+              placeholder="e.g., New Car, Education, Wedding"
+            />
+            <TextField
+              label="Target Amount (₹)"
+              value={newGoal.target}
+              onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })}
+              fullWidth
+              type="number"
+              placeholder="e.g., 1000000"
+            />
+            <TextField
+              label="Already Saved (₹)"
+              value={newGoal.saved}
+              onChange={(e) => setNewGoal({ ...newGoal, saved: e.target.value })}
+              fullWidth
+              type="number"
+              placeholder="e.g., 200000"
+            />
+          </Box>
+        </DialogContent>
         <DialogActions>
-          <Button onClick={() => setGoalDialogOpen(false)}>Close</Button>
-          <Button variant="contained">Add New Goal</Button>
+          <Button onClick={() => {
+            setGoalDialogOpen(false);
+            setNewGoal({ name: '', target: '', saved: '' });
+          }}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={addNewGoal}
+            disabled={!newGoal.name || !newGoal.target || !newGoal.saved}
+          >
+            Add Goal
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -1156,6 +1854,221 @@ const Dashboard: React.FC = () => {
           <ListItemText primary="Set up price alerts" />
         </MenuItem>
       </Menu>
+
+      {/* Smart Budget Popup */}
+      <Dialog open={showSmartBudgetPopup} onClose={() => setShowSmartBudgetPopup(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center">
+            <Assessment sx={{ color: '#4caf50', mr: 1 }} />
+            Smart Budget Analysis
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" gutterBottom color="#4caf50">
+              💡 AI-Powered Financial Insights
+            </Typography>
+            
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
+              <Card sx={{ bgcolor: '#e8f5e8', border: '1px solid #4caf50' }}>
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight="bold" color="#4caf50">
+                    📊 Monthly Budget Health
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    • Income: ₹1,58,000 (Target achieved ✅)
+                  </Typography>
+                  <Typography variant="body2">
+                    • Expenses: ₹29,000 (18% of income - Excellent!)
+                  </Typography> 
+                  <Typography variant="body2">
+                    • Savings Rate: 82% (₹1,29,000 saved)
+                  </Typography>
+                  <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+                    🎉 You're saving exceptionally well!
+                  </Typography>
+                </CardContent>
+              </Card>
+              
+              <Card sx={{ bgcolor: '#fff3e0', border: '1px solid #ff9800' }}>
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight="bold" color="#ff9800">
+                    ⚠️ Spending Patterns
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    • Food: ₹8,500 (29% of expenses)
+                  </Typography>
+                  <Typography variant="body2">
+                    • Transport: ₹5,200 (18% of expenses)
+                  </Typography>
+                  <Typography variant="body2">
+                    • Shopping: ₹4,800 (17% of expenses)
+                  </Typography>
+                  <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
+                    💡 Consider meal planning to optimize food costs
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Box>
+            
+            <Card sx={{ bgcolor: '#f3e5f5', border: '1px solid #9c27b0', mb: 3 }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight="bold" color="#9c27b0">
+                  🎯 Smart Recommendations
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  1. <strong>Emergency Fund:</strong> You have 5.4 months of expenses saved - Perfect! ✅
+                </Typography>
+                <Typography variant="body2">
+                  2. <strong>Investment Opportunity:</strong> With 82% savings rate, consider increasing SIP by ₹20,000
+                </Typography>
+                <Typography variant="body2">
+                  3. <strong>Tax Saving:</strong> Invest ₹50,000 in ELSS funds before March for ₹15,600 tax benefit
+                </Typography>
+                <Typography variant="body2">
+                  4. <strong>Weekend Spending:</strong> Your weekend expenses are 40% higher - try budgeting ₹2,000/weekend
+                </Typography>
+              </CardContent>
+            </Card>
+            
+            <Card sx={{ bgcolor: '#e1f5fe', border: '1px solid #2196f3' }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight="bold" color="#2196f3">
+                  📈 Future Projections
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  • At current savings rate, you'll save ₹15.48L annually
+                </Typography>
+                <Typography variant="body2">
+                  • Your dream home goal (₹50L) is achievable in 3.2 years
+                </Typography>
+                <Typography variant="body2">
+                  • Retirement corpus projection: ₹12.8 Cr by age 60
+                </Typography>
+                <Typography variant="body2" color="info.main" sx={{ mt: 1 }}>
+                  🌟 You're on track for financial independence!
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowSmartBudgetPopup(false)} color="primary">
+            Close
+          </Button>
+          <Button 
+            variant="contained" 
+            color="success"
+            onClick={() => {
+              setShowSmartBudgetPopup(false);
+              alert('Smart Budget insights saved to your profile!');
+            }}
+          >
+            Save Insights
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bank Addition Dialog */}
+      <Dialog open={bankDialogOpen} onClose={() => setBankDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center">
+            <AccountBalance sx={{ color: '#4caf50', mr: 1 }} />
+            Add Bank Account
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              label="Bank Name"
+              value={newBankAccount.bankName}
+              onChange={(e) => setNewBankAccount({ ...newBankAccount, bankName: e.target.value })}
+              fullWidth
+              placeholder="e.g., HDFC Bank, ICICI Bank, SBI"
+            />
+            <TextField
+              label="Account Number"
+              value={newBankAccount.accountNumber}
+              onChange={(e) => setNewBankAccount({ ...newBankAccount, accountNumber: e.target.value })}
+              fullWidth
+              placeholder="e.g., 1234567890123456"
+            />
+            <FormControl fullWidth>
+              <InputLabel>Account Type</InputLabel>
+              <Select
+                value={newBankAccount.accountType}
+                onChange={(e) => setNewBankAccount({ ...newBankAccount, accountType: e.target.value as 'Savings' | 'Current' })}
+                input={<input />}
+              >
+                <MenuItem value="Savings">Savings</MenuItem>
+                <MenuItem value="Current">Current</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Current Balance (₹)"
+              value={newBankAccount.balance}
+              onChange={(e) => setNewBankAccount({ ...newBankAccount, balance: e.target.value })}
+              fullWidth
+              type="number"
+              placeholder="e.g., 50000"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setBankDialogOpen(false);
+            setNewBankAccount({ bankName: '', accountNumber: '', accountType: 'Savings', balance: '' });
+          }}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={addNewBankAccount}
+            disabled={!newBankAccount.bankName || !newBankAccount.accountNumber || !newBankAccount.balance}
+          >
+            Add Bank Account
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* UPI App Addition Dialog */}
+      <Dialog open={upiDialogOpen} onClose={() => setUpiDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center">
+            <Phone sx={{ color: '#2196f3', mr: 1 }} />
+            Add UPI App
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              label="UPI App Name"
+              value={newUPIApp.name}
+              onChange={(e) => setNewUPIApp({ ...newUPIApp, name: e.target.value })}
+              fullWidth
+              placeholder="e.g., PhonePe, Google Pay, Paytm"
+            />
+            <TextField
+              label="UPI ID"
+              value={newUPIApp.upiId}
+              onChange={(e) => setNewUPIApp({ ...newUPIApp, upiId: e.target.value })}
+              fullWidth
+              placeholder="e.g., yourname@phonepe, yourname@okaxis"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setUpiDialogOpen(false);
+            setNewUPIApp({ name: '', upiId: '' });
+          }}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={addNewUPIApp}
+            disabled={!newUPIApp.name || !newUPIApp.upiId}
+          >
+            Add UPI App
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

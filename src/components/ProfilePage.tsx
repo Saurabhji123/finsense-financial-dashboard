@@ -126,6 +126,15 @@ const ProfilePage: React.FC = () => {
     setProfileData(tempProfile);
     setEditMode(false);
     setProfileSaved(true);
+    
+    // Save to localStorage for cross-component synchronization
+    localStorage.setItem('user-profile', JSON.stringify(tempProfile));
+    
+    // Dispatch custom event for real-time updates across components
+    window.dispatchEvent(new CustomEvent('profileUpdated', { 
+      detail: tempProfile 
+    }));
+    
     setTimeout(() => setProfileSaved(false), 3000);
   };
 
@@ -159,12 +168,15 @@ const ProfilePage: React.FC = () => {
   };
 
   const accountStats = {
-    totalInvestments: 125000,
-    monthlySpending: 45000,
-    savingsRate: 23,
+    totalInvestments: 680000, // ₹6.8L investments
+    monthlyIncome: 158000,    // ₹1.58L monthly income (matches Dashboard)
+    monthlySpending: 29000,   // ₹29k monthly expenses (realistic ratio)
+    savingsRate: 82,          // 82% savings rate (matches Dashboard logic)
     portfolioGrowth: 12.5,
     connectedAccounts: 3,
-    transactionsThisMonth: 108
+    transactionsThisMonth: 108,
+    emergencyFund: 156600,    // 5.4 months of expenses
+    annualSavings: 1548000    // ₹15.48L annual savings
   };
 
   return (
@@ -271,10 +283,26 @@ const ProfilePage: React.FC = () => {
         <Card>
           <CardContent>
             <Typography variant="body2" color="text.secondary">
+              Monthly Income
+            </Typography>
+            <Typography variant="h5" fontWeight="bold" color="success.main">
+              ₹{accountStats.monthlyIncome.toLocaleString()}
+            </Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="body2" color="text.secondary">
               Monthly Spending
             </Typography>
             <Typography variant="h5" fontWeight="bold" color="primary.main">
               ₹{accountStats.monthlySpending.toLocaleString()}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              • Food: ₹8,500 • Transport: ₹5,200
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              • Shopping: ₹4,800 • Bills: ₹3,200 • Others: ₹7,300
             </Typography>
           </CardContent>
         </Card>
@@ -286,6 +314,22 @@ const ProfilePage: React.FC = () => {
             <Typography variant="h5" fontWeight="bold" color="success.main">
               {accountStats.savingsRate}%
             </Typography>
+            <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+              ₹{(accountStats.monthlyIncome - accountStats.monthlySpending).toLocaleString()}/month saved
+            </Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="body2" color="text.secondary">
+              Emergency Fund
+            </Typography>
+            <Typography variant="h5" fontWeight="bold" color="info.main">
+              ₹{accountStats.emergencyFund.toLocaleString()}
+            </Typography>
+            <Typography variant="body2" color="info.main" sx={{ mt: 1 }}>
+              5.4 months covered
+            </Typography>
           </CardContent>
         </Card>
         <Card>
@@ -295,6 +339,19 @@ const ProfilePage: React.FC = () => {
             </Typography>
             <Typography variant="h5" fontWeight="bold" color="success.main">
               +{accountStats.portfolioGrowth}%
+            </Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="body2" color="text.secondary">
+              Annual Savings Projection
+            </Typography>
+            <Typography variant="h5" fontWeight="bold" color="success.main">
+              ₹{(accountStats.annualSavings / 100000).toFixed(1)}L
+            </Typography>
+            <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+              On track for FI goals!
             </Typography>
           </CardContent>
         </Card>
